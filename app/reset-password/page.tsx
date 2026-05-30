@@ -18,6 +18,7 @@ export default function ResetPasswordPage() {
     setLoading(true)
     setError('')
     const { error } = await supabase.auth.updateUser({ password })
+    if (!error) await supabase.auth.signOut()
     if (error) setError(error.message)
     else setDone(true)
     setLoading(false)
