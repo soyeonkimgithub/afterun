@@ -25,7 +25,8 @@ export default function ForgotPasswordPage() {
 
   async function handleBackToLogin() {
     await supabase.auth.signOut()
-    router.push('/login')
+    await new Promise(resolve => setTimeout(resolve, 500))
+    router.replace('/login')
   }
 
   if (sent) return (
