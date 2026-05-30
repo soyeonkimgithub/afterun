@@ -23,6 +23,11 @@ export default function ForgotPasswordPage() {
     setLoading(false)
   }
 
+  async function handleBackToLogin() {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
   if (sent) return (
     <div className="app-shell">
       <div className="app-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '100vh' }}>
@@ -31,11 +36,7 @@ export default function ForgotPasswordPage() {
         <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 32, lineHeight: 1.6 }}>
           We sent a password reset link to {email}.
         </p>
-        <button className="btn-ghost" onClick={async () => {
-          const supabase = createClient()
-          await supabase.auth.signOut()
-          router.push('/login')
-        }}>
+        <button className="btn-ghost" onClick={handleBackToLogin}>
           ← Back to login
         </button>
       </div>
@@ -45,7 +46,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="app-shell">
       <div className="app-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '100vh' }}>
-        <button onClick={() => router.push('/login')}
+        <button onClick={handleBackToLogin}
           style={{ fontSize: 13, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 32, padding: 0, fontFamily: 'DM Sans, sans-serif', textAlign: 'left' }}>
           ← Back
         </button>
