@@ -31,7 +31,11 @@ export default function ForgotPasswordPage() {
         <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 32, lineHeight: 1.6 }}>
           We sent a password reset link to {email}.
         </p>
-        <button className="btn-ghost" onClick={() => router.push('/login')}>
+        <button className="btn-ghost" onClick={async () => {
+          const supabase = createClient()
+          await supabase.auth.signOut()
+          router.push('/login')
+        }}>
           ← Back to login
         </button>
       </div>
