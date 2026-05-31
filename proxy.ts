@@ -28,7 +28,9 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
     pathname.startsWith('/forgot-password') ||
-    pathname.startsWith('/reset-password')
+    pathname.startsWith('/reset-password') ||
+    pathname === '/sitemap.xml' ||
+    pathname === '/robots.txt'
 
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))
