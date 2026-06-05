@@ -1,44 +1,51 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Run } from '@/hooks/useRuns'
 
 const FEELING_EMOJI: Record<string, string> = {
   great: '🔥', good: '😊', okay: '😐', tough: '😤'
 }
-
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 export default function CalendarPage() {
   const supabase = useRef<SupabaseClient>(createClient()).current
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const today = new Date()
+
+  const initYear = parseInt(searchParams.get('year') || String(today.getFullYear()))
+  const initMonth = parseInt(searchParams.get('month') || String(today.getMonth()))
+
+  const [year, setYear] = useState(initYear)
+  const [month, setMonth] = useState(initMonth)
   const [runs, setRuns] = useState<Run[]>([])
   const [loading, setLoading] = useState(true)
-  const today = new Date()
-  const [year, setYear] = useState(today.getFullYear())
-  const [month, setMonth] = useState(today.getMonth())
 
-  useEffect(() => { fetchRuns() }, [])
+  useEffect(() => { fetchRuns() }, [year, month])
 
   async function fetchRuns() {
+    setLoading(true)
+    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`
     const { data } = await supabase
       .from('runs')
       .select('*')
+      .gte('run_date', `${monthStr}-01`)
+      .lte('run_date', `${monthStr}-31`)
       .order('run_date', { ascending: false })
     if (data) setRuns(data)
     setLoading(false)
   }
 
-  // 날짜별 run 맵
   const runMap: Record<string, Run> = {}
   runs.forEach(r => { runMap[r.run_date] = r })
 
-  // 달력 계산
   const firstDay = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const todayStr = today.toLocaleDateString('en-CA')
+  const isCurrentMonth = year === today.getFullYear() && month === today.getMonth()
 
   const cells: (number | null)[] = [
     ...Array(firstDay).fill(null),
@@ -55,23 +62,13 @@ export default function CalendarPage() {
   }
 
   function nextMonth() {
+    if (isCurrentMonth) return
     if (month === 11) { setYear(y => y + 1); setMonth(0) }
     else setMonth(m => m + 1)
   }
 
   const monthName = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-
-  // 이번 달 통계
-  const monthRuns = runs.filter(r => r.run_date.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`))
-  const totalKm = monthRuns.reduce((sum, r) => sum + (r.distance_km || 0), 0)
-
-  if (loading) return (
-    <div className="app-shell">
-      <div className="app-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-        <p style={{ color: 'var(--muted)', fontSize: 14 }}>Loading...</p>
-      </div>
-    </div>
-  )
+  const totalKm = runs.reduce((sum, r) => sum + (r.distance_km || 0), 0)
 
   return (
     <div className="app-shell">
@@ -79,17 +76,17 @@ export default function CalendarPage() {
 
         {/* 헤더 */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <h1 style={{ fontSize: 24, color: 'var(--text)' }}>Calendar</h1>
-          <button onClick={() => router.push('/')}
-            style={{ fontSize: 12, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
-            ← list
+          <h1 style={{ fontSize: 24, color: 'var(--text)' }}>afterun</h1>
+          <button onClick={() => router.push(`/?year=${year}&month=${month}`)}
+            style={{ fontSize: 12, color: 'var(--amber-400)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+            list
           </button>
         </div>
 
         {/* 이번 달 통계 */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
           <div style={{ flex: 1, background: 'var(--surface)', borderRadius: 12, padding: '12px 16px', border: '0.5px solid var(--border)', textAlign: 'center' }}>
-            <p style={{ fontSize: 22, fontWeight: 500, color: 'var(--amber-400)', marginBottom: 2 }}>{monthRuns.length}</p>
+            <p style={{ fontSize: 22, fontWeight: 500, color: 'var(--amber-400)', marginBottom: 2 }}>{runs.length}</p>
             <p style={{ fontSize: 11, color: 'var(--muted)' }}>runs</p>
           </div>
           <div style={{ flex: 1, background: 'var(--surface)', borderRadius: 12, padding: '12px 16px', border: '0.5px solid var(--border)', textAlign: 'center' }}>
@@ -110,7 +107,8 @@ export default function CalendarPage() {
           <button onClick={nextMonth} style={{
             width: 32, height: 32, borderRadius: '50%',
             background: 'var(--surface)', border: '0.5px solid var(--border)',
-            color: 'var(--muted)', cursor: 'pointer', fontSize: 16,
+            color: isCurrentMonth ? 'var(--border)' : 'var(--muted)',
+            cursor: isCurrentMonth ? 'default' : 'pointer', fontSize: 16,
             display: 'flex', alignItems: 'center', justifyContent: 'center'
           }}>›</button>
         </div>
@@ -135,47 +133,37 @@ export default function CalendarPage() {
               <div key={i}
                 onClick={() => run && router.push(`/run/${run.id}`)}
                 style={{
-                  aspectRatio: '1',
-                  borderRadius: 10,
+                  aspectRatio: '1', borderRadius: 10,
                   background: run ? '#2E1F08' : 'var(--surface)',
                   border: isToday
                     ? '1.5px solid var(--amber-400)'
-                    : run
-                      ? '0.5px solid var(--amber-600)'
-                      : '0.5px solid var(--border)',
+                    : run ? '0.5px solid var(--amber-600)'
+                    : '0.5px solid var(--border)',
                   cursor: run ? 'pointer' : 'default',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 2,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', gap: 2,
                   opacity: isFuture ? 0.3 : 1,
-                  transition: 'opacity 0.15s',
                 }}>
                 <span style={{
                   fontSize: 11,
                   color: run ? 'var(--amber-400)' : isToday ? 'var(--amber-400)' : 'var(--muted)',
                   fontWeight: isToday ? 500 : 400,
                 }}>{day}</span>
-                {run?.feeling && (
-                  <span style={{ fontSize: 10, lineHeight: 1 }}>{FEELING_EMOJI[run.feeling]}</span>
-                )}
-                {run && !run.feeling && (
-                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--amber-400)' }}/>
-                )}
+                {run?.feeling && <span style={{ fontSize: 10, lineHeight: 1 }}>{FEELING_EMOJI[run.feeling]}</span>}
+                {run && !run.feeling && <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--amber-400)' }}/>}
               </div>
             )
           })}
         </div>
 
         {/* 이번 달 기록 목록 */}
-        {monthRuns.length > 0 && (
+        {runs.length > 0 && (
           <div>
             <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12, fontWeight: 500, letterSpacing: '0.04em' }}>
               THIS MONTH
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {monthRuns.map(run => (
+              {runs.map(run => (
                 <div key={run.id}
                   onClick={() => router.push(`/run/${run.id}`)}
                   style={{
@@ -207,15 +195,17 @@ export default function CalendarPage() {
         )}
 
         {/* FAB */}
-        <button onClick={() => router.push('/new')}
-          style={{
-            position: 'fixed', bottom: 32, right: 32,
-            width: 52, height: 52, borderRadius: '50%',
-            background: 'var(--amber-400)', color: 'var(--bg)',
-            border: 'none', fontSize: 24, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 20px rgba(239,159,39,0.4)', zIndex: 10,
-          }}>+</button>
+        {isCurrentMonth && (
+          <button onClick={() => router.push('/new')}
+            style={{
+              position: 'fixed', bottom: 32, right: 32,
+              width: 52, height: 52, borderRadius: '50%',
+              background: 'var(--amber-400)', color: 'var(--bg)',
+              border: 'none', fontSize: 24, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 20px rgba(239,159,39,0.4)', zIndex: 10,
+            }}>+</button>
+        )}
 
       </div>
     </div>
