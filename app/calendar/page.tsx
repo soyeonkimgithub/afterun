@@ -29,11 +29,14 @@ function CalendarContent() {
   async function fetchRuns() {
     setLoading(true)
     const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`
+    const nextMonth = month === 11
+      ? `${year + 1}-01`
+      : `${year}-${String(month + 2).padStart(2, '0')}`
     const { data } = await supabase
       .from('runs')
       .select('*')
       .gte('run_date', `${monthStr}-01`)
-      .lte('run_date', `${monthStr}-31`)
+      .lt('run_date', `${nextMonth}-01`)
       .order('run_date', { ascending: false })
     if (data) setRuns(data)
     setLoading(false)
