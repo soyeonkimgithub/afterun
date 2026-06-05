@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -10,7 +10,7 @@ const FEELING_EMOJI: Record<string, string> = {
 }
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-export default function CalendarPage() {
+function CalendarContent() {
   const supabase = useRef<SupabaseClient>(createClient()).current
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -209,5 +209,19 @@ export default function CalendarPage() {
 
       </div>
     </div>
+  )
+}
+
+export default function CalendarPage() {
+  return (
+    <Suspense fallback={
+      <div className="app-shell">
+        <div className="app-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+          <p style={{ color: 'var(--muted)', fontSize: 14 }}>Loading...</p>
+        </div>
+      </div>
+    }>
+      <CalendarContent />
+    </Suspense>
   )
 }
